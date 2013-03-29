@@ -1,0 +1,13 @@
+*.[oa]
+*.~
+*.dat
+*.e
+.DS_Store
+results/
+obj/
+*.pyc
+tests/
+*.txt
+*.h5
+*.swp
+generateGraceBatchFile-3/

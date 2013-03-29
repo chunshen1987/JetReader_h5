@@ -1,0 +1,17 @@
+SHELL=/bin/sh
+
+CC= g++
+CFLAGS=  -O3
+WARNFLAGS= -ansi -pedantic -Wall -W \
+   -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align \
+   -Wwrite-strings -fshort-enums -fno-common 
+LDFLAGS= -lz -lm
+
+INCLUDE= -I/usr/local/hdf5/include
+LIBSHDF = -L/usr/local/hdf5/lib /usr/local/hdf5/lib/libhdf5_hl_cpp.a /usr/local/hdf5/lib/libhdf5_cpp.a /usr/local/hdf5/lib/libhdf5_hl.a /usr/local/hdf5/lib/libhdf5.a
+
+all: test_Reader \
+
+test_Reader: testReader.cpp Hydroinfo_h5.cpp Hydroinfo_h5.h
+	$(CC) $(CFLAGS) -o test_Reader testReader.cpp Hydroinfo_h5.cpp $(INCLUDE) $(LIBSHDF) $(LDFLAGS)
+ 
