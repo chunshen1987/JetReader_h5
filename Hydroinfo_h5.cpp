@@ -12,6 +12,8 @@ using namespace std;
 
 HydroinfoH5::HydroinfoH5(string filename)
 {
+   Visflag = 1; // flag to determine whether to read evolutions for viscous variables
+
    herr_t status;
    const char *fileptr = (char*) filename.c_str();
    H5file_id = H5Fopen(fileptr, H5F_ACC_RDWR, H5P_DEFAULT);
@@ -82,8 +84,9 @@ HydroinfoH5::HydroinfoH5(string filename)
          BulkPi[i][j] = new double [dimensionY];
       }
    }
-   
-   readHydroinfoBuffered(); 
+  
+   for(int i=0; i < ((int)(grid_Framenum/Buffersize))+1 ; i++)
+      readHydroinfoBuffered(i); 
 
    status = H5Gclose(H5groupEventid);
    status = H5Fclose(H5file_id);
@@ -164,6 +167,7 @@ void HydroinfoH5::readHydrogridInfo()
    grid_dy = readH5Attribute_double(H5groupEventid, "DY");
    
    status = H5Gget_num_objs(H5groupEventid, &grid_Framenum);
+   grid_Taumax = grid_Tau0 + (grid_Framenum - 1)*grid_dTau;
 }
 
 void HydroinfoH5::printHydrogridInfo()
@@ -179,6 +183,13 @@ void HydroinfoH5::printHydrogridInfo()
    cout << "DY = " << grid_dy << " fm" << endl;
    cout << "Tau0 = " << grid_Tau0 << " fm" << endl;
    cout << "dTau = " << grid_dTau << " fm" << endl;
+   cout << "Number of Frames: " << grid_Framenum << endl;
+   cout << "Taumax = " << grid_Taumax << " fm" << endl;
+   cout << "Read in viscous information? ";
+   if(Visflag == 1)
+      cout << " Yes!" << endl;
+   else
+      cout << " No!" << endl;
    cout << "-----------------------------------------" << endl;
 }
 
@@ -204,37 +215,41 @@ double HydroinfoH5::readH5Attribute_double(hid_t id, string attributeName)
    return(attributeValue);
 }
 
-void HydroinfoH5::readHydroinfoBuffered()
+void HydroinfoH5::readHydroinfoBuffered(int loopNum)
 {
    hid_t group_id;
    herr_t status;
-
+   
+   int frameIdx;
    for(int i=0; i<Buffersize; i++)
    {
-      if(i < (int) grid_Framenum)
+      frameIdx = loopNum*Buffersize + i;
+      if(frameIdx < (int) grid_Framenum)
       {
          stringstream frameName;
-         frameName << "Frame_" <<  setw(4) << setfill('0') << i;
+         frameName << "Frame_" <<  setw(4) << setfill('0') << frameIdx;
          group_id = H5Gopen(H5groupEventid, frameName.str().c_str(), H5P_DEFAULT);
-
+      
          readH5Dataset_double(group_id, "e", ed[i]);
          readH5Dataset_double(group_id, "s", sd[i]);
          readH5Dataset_double(group_id, "Vx", vx[i]);
          readH5Dataset_double(group_id, "Vy", vy[i]);
          readH5Dataset_double(group_id, "Temp", Temperature[i]);
          readH5Dataset_double(group_id, "P", Pressure[i]);
-         readH5Dataset_double(group_id, "Pi00", pi00[i]);
-         readH5Dataset_double(group_id, "Pi01", pi01[i]);
-         readH5Dataset_double(group_id, "Pi02", pi02[i]);
-         readH5Dataset_double(group_id, "Pi03", pi03[i]);
-         readH5Dataset_double(group_id, "Pi11", pi11[i]);
-         readH5Dataset_double(group_id, "Pi12", pi12[i]);
-         readH5Dataset_double(group_id, "Pi13", pi13[i]);
-         readH5Dataset_double(group_id, "Pi22", pi22[i]);
-         readH5Dataset_double(group_id, "Pi23", pi23[i]);
-         readH5Dataset_double(group_id, "Pi33", pi33[i]);
-         readH5Dataset_double(group_id, "BulkPi", BulkPi[i]);
-   
+         if(Visflag == 1)
+         {
+            readH5Dataset_double(group_id, "Pi00", pi00[i]);
+            readH5Dataset_double(group_id, "Pi01", pi01[i]);
+            readH5Dataset_double(group_id, "Pi02", pi02[i]);
+            readH5Dataset_double(group_id, "Pi03", pi03[i]);
+            readH5Dataset_double(group_id, "Pi11", pi11[i]);
+            readH5Dataset_double(group_id, "Pi12", pi12[i]);
+            readH5Dataset_double(group_id, "Pi13", pi13[i]);
+            readH5Dataset_double(group_id, "Pi22", pi22[i]);
+            readH5Dataset_double(group_id, "Pi23", pi23[i]);
+            readH5Dataset_double(group_id, "Pi33", pi33[i]);
+            readH5Dataset_double(group_id, "BulkPi", BulkPi[i]);
+         }
          status = H5Gclose(group_id);
       }
       else
@@ -252,25 +267,29 @@ void HydroinfoH5::readHydroinfoSingleframe(int frameIdx)
       stringstream frameName;
       frameName << "Frame_" <<  setw(4) << setfill('0') << frameIdx;
       group_id = H5Gopen(H5groupEventid, frameName.str().c_str(), H5P_DEFAULT);
+      
+      int Idx = frameIdx % Buffersize;
 
-      readH5Dataset_double(group_id, "e", ed[frameIdx]);
-      readH5Dataset_double(group_id, "s", sd[frameIdx]);
-      readH5Dataset_double(group_id, "Vx", vx[frameIdx]);
-      readH5Dataset_double(group_id, "Vy", vy[frameIdx]);
-      readH5Dataset_double(group_id, "Temp", Temperature[frameIdx]);
-      readH5Dataset_double(group_id, "P", Pressure[frameIdx]);
-      readH5Dataset_double(group_id, "Pi00", pi00[frameIdx]);
-      readH5Dataset_double(group_id, "Pi01", pi01[frameIdx]);
-      readH5Dataset_double(group_id, "Pi02", pi02[frameIdx]);
-      readH5Dataset_double(group_id, "Pi03", pi03[frameIdx]);
-      readH5Dataset_double(group_id, "Pi11", pi11[frameIdx]);
-      readH5Dataset_double(group_id, "Pi12", pi12[frameIdx]);
-      readH5Dataset_double(group_id, "Pi13", pi13[frameIdx]);
-      readH5Dataset_double(group_id, "Pi22", pi22[frameIdx]);
-      readH5Dataset_double(group_id, "Pi23", pi23[frameIdx]);
-      readH5Dataset_double(group_id, "Pi33", pi33[frameIdx]);
-      readH5Dataset_double(group_id, "BulkPi", BulkPi[frameIdx]);
-   
+      readH5Dataset_double(group_id, "e", ed[Idx]);
+      readH5Dataset_double(group_id, "s", sd[Idx]);
+      readH5Dataset_double(group_id, "Vx", vx[Idx]);
+      readH5Dataset_double(group_id, "Vy", vy[Idx]);
+      readH5Dataset_double(group_id, "Temp", Temperature[Idx]);
+      readH5Dataset_double(group_id, "P", Pressure[Idx]);
+      if(Visflag == 1)
+      {
+         readH5Dataset_double(group_id, "Pi00", pi00[Idx]);
+         readH5Dataset_double(group_id, "Pi01", pi01[Idx]);
+         readH5Dataset_double(group_id, "Pi02", pi02[Idx]);
+         readH5Dataset_double(group_id, "Pi03", pi03[Idx]);
+         readH5Dataset_double(group_id, "Pi11", pi11[Idx]);
+         readH5Dataset_double(group_id, "Pi12", pi12[Idx]);
+         readH5Dataset_double(group_id, "Pi13", pi13[Idx]);
+         readH5Dataset_double(group_id, "Pi22", pi22[Idx]);
+         readH5Dataset_double(group_id, "Pi23", pi23[Idx]);
+         readH5Dataset_double(group_id, "Pi33", pi33[Idx]);
+         readH5Dataset_double(group_id, "BulkPi", BulkPi[Idx]);
+      }
       status = H5Gclose(group_id);
    }
    else
