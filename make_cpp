@@ -12,6 +12,6 @@ LIBSHDF = -L/usr/local/hdf5/lib /usr/local/hdf5/lib/libhdf5_hl_cpp.a /usr/local/
 
 all: test_Reader \
 
-test_Reader: testReader.cpp Hydroinfo_h5.cpp Hydroinfo_h5.h
-	$(CC) $(CFLAGS) -o test_Reader testReader.cpp Hydroinfo_h5.cpp $(INCLUDE) $(LIBSHDF) $(LDFLAGS)
+test_Reader: testReader.cpp Hydroinfo_h5.cpp Hydroinfo_h5.h arsenal.cpp arsenal.h
+	$(CC) $(CFLAGS) -o test_Reader testReader.cpp Hydroinfo_h5.cpp arsenal.cpp $(INCLUDE) $(LIBSHDF) $(LDFLAGS)
  
