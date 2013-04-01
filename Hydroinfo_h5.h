@@ -14,10 +14,15 @@ class HydroinfoH5
    private:
       int Buffersize;
       hid_t H5file_id, H5groupEventid;
-      herr_t status;
 
       int grid_XL, grid_XH, grid_YL, grid_YH;
+      hsize_t grid_Framenum;
       double grid_Tau0, grid_dTau, grid_dx, grid_dy;
+
+      int dimensionX, dimensionY;
+      double ***ed, ***sd, ***vx, ***vy, ***Temperature, ***Pressure;
+      double ***pi00, ***pi01, ***pi02, ***pi03, ***pi11, ***pi12, ***pi13, ***pi22, ***pi23, ***pi33;
+      double ***BulkPi;
 
    public:
       HydroinfoH5(string file);
@@ -27,6 +32,10 @@ class HydroinfoH5
       void printHydrogridInfo();
       int readH5Attribute_int(hid_t id, string attributeName);
       double readH5Attribute_double(hid_t id, string attributeName);
+
+      void readHydroinfoBuffered();
+      void readHydroinfoSingleframe(int frameIdx);
+      void readH5Dataset_double(hid_t id, string datasetName, double** dset_data);
 
 };
 
