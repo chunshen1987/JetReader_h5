@@ -5,6 +5,7 @@
 #include<sstream>
 #include<string>
 
+#include "ParameterReader.h"
 #include "hdf5.h"
 
 using namespace std;
@@ -18,13 +19,14 @@ struct fluidCell {
 class HydroinfoH5
 {
    private:
+      ParameterReader* paraRdr;
       int Visflag;  // flag to determine whether to read evolutions for viscous variables
 
       int Buffersize;
       hid_t H5file_id, H5groupEventid;
 
       int grid_XL, grid_XH, grid_YL, grid_YH;
-      hsize_t grid_Framenum;
+      int grid_Framenum;
       double grid_X0, grid_Y0;
       double grid_Xmax, grid_Ymax;
       double grid_Tau0, grid_dTau, grid_dx, grid_dy;
@@ -36,7 +38,7 @@ class HydroinfoH5
       double ***BulkPi;
 
    public:
-      HydroinfoH5(string file);
+      HydroinfoH5(string file, ParameterReader* paraRdr_in);
       ~HydroinfoH5();
       
       void readHydrogridInfo();
@@ -48,6 +50,18 @@ class HydroinfoH5
       void readHydroinfoSingleframe(int frameIdx);
       void readH5Dataset_double(hid_t id, string datasetName, double** dset_data);
 
+      int getNumberofFrames() {return((int)grid_Framenum);};
+      double getHydrogridDX() {return(grid_dx);};
+      double getHydrogridDY() {return(grid_dy);};
+      double getHydrogridDTau() {return(grid_dTau);};
+      double getHydrogridTau0() {return(grid_Tau0);};
+      double getHydrogridTaumax() {return(grid_Taumax);};
+      double getHydrogridNX() {return(grid_XH - grid_XL + 1);};
+      double getHydrogridNY() {return(grid_YH - grid_YL + 1);};
+      double getHydrogridX0() {return(grid_X0);};
+      double getHydrogridY0() {return(grid_Y0);};
+      double getHydrogridXmax() {return(grid_Xmax);};
+      double getHydrogridYmax() {return(grid_Ymax);};
       void getHydroinfoOnlattice(int frameIdx, int xIdx, int yIdx, fluidCell* fluidCellptr);
       void getHydroinfo(double tau, double x, double y, fluidCell* fluidCellptr);
       void setZero_fluidCell(fluidCell* fluidCellptr);

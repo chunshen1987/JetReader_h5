@@ -6,14 +6,18 @@
 #include<string>
 
 #include "hdf5.h"
-#include "arsenal.h"
+#include "Arsenal.h"
 #include "Hydroinfo_h5.h"
+#include "ParameterReader.h"
 
 using namespace std;
 
-HydroinfoH5::HydroinfoH5(string filename)
+HydroinfoH5::HydroinfoH5(string filename, ParameterReader* paraRdr_in)
 {
-   Visflag = 1; // flag to determine whether to read evolutions for viscous variables
+   paraRdr = paraRdr_in;
+
+   // flag to determine whether to read evolutions for viscous variables
+   Visflag = paraRdr->getVal("HydroinfoVisflag");
 
    herr_t status;
    const char *fileptr = (char*) filename.c_str();
@@ -23,7 +27,7 @@ HydroinfoH5::HydroinfoH5(string filename)
    readHydrogridInfo();
    printHydrogridInfo();
 
-   Buffersize = 300;
+   Buffersize = paraRdr->getVal("HydroinfoBuffersize");
    dimensionX = grid_XH - grid_XL + 1;
    dimensionY = grid_YH - grid_YL + 1;
 
@@ -176,7 +180,9 @@ void HydroinfoH5::readHydrogridInfo()
    grid_Xmax = grid_XH * grid_dx;
    grid_Ymax = grid_YH * grid_dy;
    
-   status = H5Gget_num_objs(H5groupEventid, &grid_Framenum);
+   hsize_t tempFramenum;
+   status = H5Gget_num_objs(H5groupEventid, &tempFramenum);
+   grid_Framenum = (int) tempFramenum;
    grid_Taumax = grid_Tau0 + (grid_Framenum - 1)*grid_dTau;
 }
 
@@ -361,7 +367,7 @@ void HydroinfoH5::getHydroinfoOnlattice(int frameIdx, int xIdx, int yIdx, fluidC
 
 void HydroinfoH5::getHydroinfo(double tau, double x, double y, fluidCell* fluidCellptr)
 {
-   if(tau < grid_Tau0 || tau > grid_Taumax || x < grid_X0 || x > grid_Xmax || y < grid_Y0 || y > grid_Ymax)
+   if(tau < grid_Tau0 || tau >= grid_Taumax || x < grid_X0 || x >= grid_Xmax || y < grid_Y0 || y >= grid_Ymax)
    {
       setZero_fluidCell(fluidCellptr);
       return;
