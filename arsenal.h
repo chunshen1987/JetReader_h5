@@ -4,12 +4,10 @@
 #include<fstream>
 #include<string>
 #include<vector>
-#include "Table2D.h"
 
 using namespace std;
 
 double Simpson_sum(double* , int, double);
-//double interpolation2D_bilinear(Table2D* , double , double , int);
 
 vector< vector<double>* >* readBlockData(istream &stream_in);
 void releaseBlockData(vector< vector<double>* >* data);
