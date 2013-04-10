@@ -973,3 +973,337 @@
       RETURN
       END
 !-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine getJetTauMax(x0,y0,dirX,dirY,cutT,step,tauMax)
+      Implicit None
+      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
+      Double precision :: hydroGrid_X0, hydroGrid_Y0
+      Double precision :: hydroGrid_DX, hydroGrid_DY
+      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
+      Double precision :: hydroGrid_Taumax
+      Integer :: hydroGrid_numOfframes
+      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
+     &                       hydroGrid_X0, hydroGrid_DX, 
+     &                       hydroGrid_YL, hydroGrid_YH, 
+     &                       hydroGrid_Y0, hydroGrid_DY, 
+     &                       hydroGrid_Tau0, hydroGrid_dTau,
+     &                       hydroGrid_Taumax,
+     &                       hydroGrid_numOfframes
+
+      Double precision :: x0, y0, dirX, dirY, cutT, step, tauMax
+
+      Call getJetDeltaTauMax(x0,y0,dirX,dirY,cutT,step,tauMax)
+      tauMax = tauMax + hydroGrid_Tau0
+      end
+!-----------------------------------------------------------------------
+!***********************************************************************
+      Subroutine getJetDeltaTauMax(x0,y0,dirX,dirY,cutT,step,deltaTau)
+!     Return the max possible deltaTau that determines the length of the
+!     path of a jet positioned at (x0,y0) with direction (dirX,dirY). The
+!     jet is assumed to travel at speed of light and the deltaTau value
+!     is determined by the time the jet leaves the hydro data x-y-tau cube.
+!     deltaTau is measured relative to tau0.
+!     Must be called after getHydroDataRecLength.
+!     After the crude maximum is determined, it is reduced by checking,
+!     from the maximum possible value deltaTau, "step" by "step", if the
+!     temperature is larger than cutT. It keeps shrinking if the readed
+!     temperature is less than cutT (GeV)
+!     Note that this method is slower than getJetDeltaTauMaxOld.
+
+      Implicit None
+
+      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
+      Double precision :: hydroGrid_X0, hydroGrid_Y0
+      Double precision :: hydroGrid_DX, hydroGrid_DY
+      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
+      Double precision :: hydroGrid_Taumax
+      Integer :: hydroGrid_numOfframes
+      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
+     &                       hydroGrid_X0, hydroGrid_DX, 
+     &                       hydroGrid_YL, hydroGrid_YH, 
+     &                       hydroGrid_Y0, hydroGrid_DY, 
+     &                       hydroGrid_Tau0, hydroGrid_dTau,
+     &                       hydroGrid_Taumax,
+     &                       hydroGrid_numOfframes
+
+      Double Precision:: x0,y0,dirX,dirY,deltaTau
+      Double Precision:: rXL,rXH,rYL,rYH
+      Double Precision:: dirNorm
+      Double Precision:: cutT,step,jetLength,e,p,s,T,vx,vy
+
+      ! first, calculate boundaries
+      rXL = hydroGrid_XL*hydroGrid_DX
+      rXH = hydroGrid_XH*hydroGrid_DX
+      rYL = hydroGrid_YL*hydroGrid_DY
+      rYH = hydroGrid_YH*hydroGrid_DY
+
+      ! next, find intersections and length
+      dirNorm = Sqrt(dirX*dirX+dirY*dirY)
+      
+      If (dirX>=0) Then ! point to the right
+        If (dirY>=0) Then ! point to the top
+          If (dirY*(rXH-x0)>dirX*(rYH-y0)) Then
+            ! intercept with the top
+            deltaTau = (rYH-y0)/dirY*dirNorm
+          Else
+            ! intercept with the right
+            deltaTau = (rXH-x0)/dirX*dirNorm
+          EndIf
+        Else ! point to the bottom
+          If ((-dirY)*(rXH-x0)>dirX*(y0-rYL)) Then
+            ! intercept with the bottom
+            deltaTau = (y0-rYL)/(-dirY)*dirNorm
+          Else
+            ! intercept with the right
+            deltaTau = (rXH-x0)/dirX*dirNorm
+          EndIf
+        EndIf
+      Else ! point to the left
+        If (dirY>=0) Then ! point to the top
+          If (dirY*(x0-rXL)>(-dirX)*(rYH-y0)) Then
+            ! intercept with the top
+            deltaTau = (rYH-y0)/dirY*dirNorm
+          Else
+            ! intercept with the left
+            deltaTau = (x0-rXL)/(-dirX)*dirNorm
+          EndIf
+        Else ! point to the bottom
+          If ((-dirY)*(x0-rXL)>(-dirX)*(y0-rYL)) Then
+            ! intercept with the bottom
+            deltaTau = (y0-rYL)/(-dirY)*dirNorm
+          Else
+            ! intercept with the left
+            deltaTau = (x0-rXL)/(-dirX)*dirNorm
+          EndIf
+        EndIf      
+      EndIf
+      
+      ! constrain from tau direction)
+      deltaTau = Min(deltaTau, hydroGrid_dTau*(hydroGrid_numOfframes-1))
+
+      ! try to shrink this length
+      jetLength = deltaTau
+      Do
+        If (jetLength<0D0) Then
+          deltaTau=0D0
+          Exit
+        EndIf
+        Call readHydroinfoBuffered_ideal(jetLength + hydroGrid_Tau0,
+     &                        x0+dirX/dirNorm*(jetLength),
+     &                        y0+dirY/dirNorm*(jetLength),
+     &                        e,p,s,T,vx,vy)
+        If (T>=cutT) Then
+          deltaTau = jetLength
+          Exit
+        EndIf
+        jetLength=jetLength-step
+      End Do
+
+      End Subroutine
+!------------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine getJetavgLength_shell(cutT, Jet_maxlength, 
+     &               Jet_avglength, Jet_avglength_in, Jet_avglength_out)
+      Implicit none
+      double precision :: cutT
+      double precision :: Jet_maxlength, Jet_avglength, 
+     &                    Jet_avglength_in, Jet_avglength_out
+
+      call getJetavgLength_initial(cutT)
+      call getJetavgLengthfromMaxlength(Jet_maxlength, Jet_avglength, 
+     &                              Jet_avglength_in, Jet_avglength_out)
+      return
+      end
+!------------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine getJetavgLength_initial(cutT)
+!     For a given cut-off temperature, this subroutine performs the calculations 
+!     for test particles' path lengths inside hydro medium and build up tables 
+!     to store the averaged path lengths for test particles with some given 
+!     maximum allowed jet path lengths.
+!     Test particles are weighted by the local binary collision probabilities
+!     that provided by hydro simulation.
+      Implicit none
+      double precision :: cutT
+      Integer, Parameter :: NXPhy0=-130,NYPhy0=-130   !Physical initial grid size
+      Integer, Parameter :: NXPhy=130,NYPhy=130       !Physical end grid size
+
+      double precision, Parameter :: PI=3.1415926585d0
+      Integer :: I=1, J=1, K=1, L=1     !loop variables
+
+      double precision :: Binary_profile(NXPhy0:NXPhy, NYPhy0:NYPhy)
+
+C=====variable for test particles====================================
+      integer, parameter :: nphi = 100
+      integer, parameter :: jetnum = 6812100     !Maximum number of testing jets
+      double precision, parameter :: eps = 1D-4
+      
+      double precision :: x0, y0, phi0   !the origin of the jet position
+      double precision :: dx, dy, dphi!the step length
+      double precision :: dirx, diry
+      double precision :: weight_j(jetnum)    !weight for jet production
+      double precision :: phi_j(jetnum)
+      double precision :: D_j(jetnum)    !record the distence the jets travels when it interact with medium
+
+      Integer :: Idx                     !index of the testing jet
+      Integer :: number_of_jets
+      double precision :: maxTau
+
+      double precision :: phi_boundary  !the maximum in plane jets emission angle
+      integer, parameter :: n_max_pathlength = 100
+      double precision :: max_pathlength0 = 1.0d0
+      double precision :: dmax_pathlength0 = 0.2d0
+      double precision :: max_pathlength(n_max_pathlength)
+      double precision :: avg_pathlength(n_max_pathlength)
+      double precision :: avg_pathlength_in(n_max_pathlength)
+      double precision :: avg_pathlength_out(n_max_pathlength)
+      double precision :: norm_pathlength(n_max_pathlength)
+      double precision :: norm_pathlength_in(n_max_pathlength)
+      double precision :: norm_pathlength_out(n_max_pathlength)
+
+      common /testparticle_pathlength/avg_pathlength, avg_pathlength_in,
+     &                                avg_pathlength_out, max_pathlength
+      common /testparticle_pathlength_coeff/max_pathlength0, 
+     &                                      dmax_pathlength0
+
+C=====variable for jet quenching output end================================
+
+      open(1, file='TATB_fromSd_order_2_block.dat', status='old')
+      do I = NXPhy0, NXPhy, 1
+         read(1, *) (Binary_profile(I, J), J = NYPhy0, NYPhy, 1)
+      enddo
+      close(1)
+      
+      dx = 0.1d0
+      dy = 0.1d0
+      dphi = 2.0d0*PI/nphi
+      phi_boundary = PI/12.
+
+      Idx = 1
+      do 100 I = NXPhy0, NXPhy, 2
+      do 100 J = NYPhy0, NYPhy, 2
+         if(Binary_profile(I, J) .ge. eps) then
+            x0 = I*dx
+            y0 = J*dy
+            do K = 1, nphi, 1 
+               phi0 = 0. + (K - 1)*dphi
+               dirx = cos(phi0)
+               diry = sin(phi0)
+               Call getJetDeltaTauMax(x0, y0, dirx, diry, cutT,
+     &                                0.05d0,maxTau)
+               D_j(Idx) = maxTau
+               weight_j(Idx) = Binary_profile(I, J)
+               phi_j(Idx) = phi0
+               Idx = Idx + 1
+            enddo
+         endif
+100   continue
+
+      avg_pathlength = 0.0d0
+      avg_pathlength_in = 0.0d0
+      avg_pathlength_out = 0.0d0
+      norm_pathlength = 0.0d0
+      norm_pathlength_in = 0.0d0
+      norm_pathlength_out = 0.0d0
+      number_of_jets = Idx - 1
+      do I = 1, number_of_jets
+         do J = 1, n_max_pathlength
+            max_pathlength(J) = max_pathlength0
+     &                        + (J-1)*dmax_pathlength0
+            if(D_j(I) .le. max_pathlength(J)) then
+               avg_pathlength(J) = avg_pathlength(J) 
+     &                           + D_j(I)*weight_j(I)
+               norm_pathlength(J) = norm_pathlength(J) + weight_j(I)
+               if((phi_j(I) .le. phi_boundary) .or.
+     &            (phi_j(I) .ge. (2*PI - phi_boundary)) .or.
+     &            (phi_j(I) .ge. (PI - phi_boundary) .and.
+     &             phi_j(I) .le. (PI + phi_boundary)) ) then
+                 avg_pathlength_in(J) = avg_pathlength_in(J)
+     &                                + D_j(I)*weight_j(I)
+                 norm_pathlength_in(J) = norm_pathlength_in(J) 
+     &                                 + weight_j(I)
+               else if(((phi_j(I) .ge. (PI/2. - phi_boundary)) .and.
+     &                  (phi_j(I) .le. (PI/2. + phi_boundary))) .or.
+     &                 (phi_j(I) .ge. (3.*PI/2. - phi_boundary) .and.
+     &                  phi_j(I) .le. (3.*PI/2. + phi_boundary))) then
+                 avg_pathlength_out(J) = avg_pathlength_out(J)
+     &                                 + D_j(I)*weight_j(I)
+                 norm_pathlength_out(J) = norm_pathlength_out(J) 
+     &                                  + weight_j(I)
+               endif
+            endif
+         enddo
+      enddo
+      do I = 1, n_max_pathlength
+         avg_pathlength(I) = avg_pathlength(I)/norm_pathlength(I)
+         avg_pathlength_in(I) = avg_pathlength_in(I)
+     &                         /norm_pathlength_in(I)
+         avg_pathlength_out(I) = avg_pathlength_out(I)
+     &                         /norm_pathlength_out(I)
+      enddo
+
+      return
+      end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      subroutine getJetavgLengthfromMaxlength(Maxlength, avglength, 
+     &                  avglength_in, avglength_out)
+!     Return the average test particles' path length (total mean, in-plane, 
+!     out-of-plane) for a given maximum allowed path length. 
+!     This subroutine must be called after the main program called 
+!     getJetavgLength_initial to initialize the calculations.
+!     This subroutine only perform a linear interpolation between the table
+!     of averaged length that calculated in getJetavgLength_initial.
+      Implicit none
+      double precision :: Maxlength, avglength, avglength_in, 
+     &                    avglength_out
+
+      integer :: Idx
+      double precision :: dx
+      integer, parameter :: n_max_pathlength = 100
+      double precision :: max_pathlength0
+      double precision :: dmax_pathlength0
+      double precision :: max_pathlength(n_max_pathlength)
+      double precision :: avg_pathlength(n_max_pathlength)
+      double precision :: avg_pathlength_in(n_max_pathlength)
+      double precision :: avg_pathlength_out(n_max_pathlength)
+      
+      common /testparticle_pathlength/avg_pathlength, avg_pathlength_in,
+     &                                avg_pathlength_out, max_pathlength
+      common /testparticle_pathlength_coeff/max_pathlength0, 
+     &                                      dmax_pathlength0
+      if(Maxlength .lt. 0.0d0) then
+         print*, "Max. allowed Jet length is < 0!"
+         stop
+      endif
+
+      if(Maxlength .le. max_pathlength(1)) then
+         dx = Maxlength
+         avglength = avg_pathlength(1)/max_pathlength(1)*dx
+         avglength_in = avg_pathlength_in(1)/max_pathlength(1)*dx
+         avglength_out = avg_pathlength_out(1)/max_pathlength(1)*dx
+      else if(Maxlength .ge. max_pathlength(n_max_pathlength)) then
+         avglength = avg_pathlength(n_max_pathlength)
+         avglength_in = avg_pathlength_in(n_max_pathlength)
+         avglength_out = avg_pathlength_out(n_max_pathlength)
+      else
+         Idx = floor((Maxlength - max_pathlength0)/dmax_pathlength0)+1
+         dx = Maxlength - max_pathlength(Idx)
+
+         avglength = (avg_pathlength(Idx+1) - avg_pathlength(Idx))/
+     &            dmax_pathlength0*dx + avg_pathlength(Idx)
+         avglength_in = (avg_pathlength_in(Idx+1)
+     &                   - avg_pathlength_in(Idx))/dmax_pathlength0*dx 
+     &                  + avg_pathlength_in(Idx)
+         avglength_out = (avg_pathlength_out(Idx+1)
+     &                    - avg_pathlength_out(Idx))/dmax_pathlength0*dx
+     &                   + avg_pathlength_out(Idx)
+      endif
+
+      return
+      end
+!-----------------------------------------------------------------------

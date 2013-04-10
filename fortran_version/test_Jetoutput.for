@@ -23,7 +23,7 @@
      &            Pi02, Pi03, Pi11, Pi12, Pi13, Pi22, Pi23, Pi33
       Double precision, Dimension(XL:XH, YL:YH, 1:1):: BulkPi
 
-      double precision :: ee, pp, ss, TT, vxx, vyy
+      double precision :: ee, pp, ss, TT, vxx, vyy, deltau
       
       Ed = 10.4d0
       Sd = 1.0d0
@@ -55,6 +55,8 @@
       Call readHydroinfoBuffered_ideal(0.63d0, 0.0d0, 0.0d0, 
      &  ee,pp,ss,TT,vxx,vyy);
       write(*,*) ee
+      call getJetDeltaTauMax(0.0d0,0.0d0,1.0d0,0.0d0, 0.2, 0.05, deltau)
+      write(*,*) deltau
 
       stop
       end
