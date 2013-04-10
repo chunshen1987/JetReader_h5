@@ -2,7 +2,7 @@ SHELL=/bin/sh
 
 FC=gfortran
 
-LDFLAGS= -lm -lz
+LDFLAGS= -lm -lz -fno-align-commons
 
 LIBSHDF= -I/usr/local/hdf5/include -L/usr/local/hdf5/lib /usr/local/hdf5/lib/libhdf5hl_fortran.a /usr/local/hdf5/lib/libhdf5_hl.a /usr/local/hdf5/lib/libhdf5_fortran.a /usr/local/hdf5/lib/libhdf5.a 
 

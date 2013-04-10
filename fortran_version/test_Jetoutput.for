@@ -22,8 +22,10 @@
       Double precision, Dimension(XL:XH, YL:YH, 1:1):: Pi00, Pi01,
      &            Pi02, Pi03, Pi11, Pi12, Pi13, Pi22, Pi23, Pi33
       Double precision, Dimension(XL:XH, YL:YH, 1:1):: BulkPi
+
+      double precision :: ee, pp, ss, TT, vxx, vyy
       
-      Ed = 0.0d0
+      Ed = 10.4d0
       Sd = 1.0d0
       P = 0.0d0
       Temp = 1.0d0
@@ -42,12 +44,17 @@
       BulkPi = 0.0d0
       Call setHydroFiles(XL, XH, DX, LSX, YL, YH, DY, LSY, Tau0, dTau, 
      &                   LST)
-
+      
       do Frame_id = 0, 10
          Call writeHydroBlock(Frame_id, Ed, Sd, P, Temp, Vx, Vy,
      &      Pi00, Pi01, Pi02, Pi03, Pi11, Pi12, Pi13, Pi22, Pi23, Pi33, 
      &      BulkPi)
       enddo
+
+      Call readHydroFiles_initialEZ("JetData.h5")
+      Call readHydroinfoBuffered_ideal(0.63d0, 0.0d0, 0.0d0, 
+     &  ee,pp,ss,TT,vxx,vyy);
+      write(*,*) ee
 
       stop
       end

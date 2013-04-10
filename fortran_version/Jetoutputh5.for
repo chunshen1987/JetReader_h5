@@ -77,9 +77,11 @@
       Double precision :: DX, DY, Tau0, dTau
       Integer :: LSX, LSY, LST, LST_cur
       Integer:: XShift, YShift
+      Integer :: OutputViscousFlag
 
       Common /hydroInfo/ XL, XH, DX, YL, YH, DY, Tau0, dTau
       Common /sparse/ XShift, LSX, YShift, LSY, LST, LST_cur
+      Common /OutputCtl/ OutputViscousFlag
 
       INTEGER(HID_T) :: group_id      ! Group identifier
 
@@ -91,6 +93,8 @@
       Call addGroupattributeDouble(group_id, "DY", DY*LSY)
       Call addGroupattributeDouble(group_id, "Tau0", Tau0)
       Call addGroupattributeDouble(group_id, "dTau", dTau*LST)
+      Call addGroupattributeInt(group_id, "OutputViscousFlag", 
+     &                             OutputViscousFlag)
 
       end
 !-----------------------------------------------------------------------
@@ -313,4 +317,659 @@
       CALL h5dclose_f(dataset_id, error)
 
       end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine readHydroFiles_initialEZ(H5hydroFilename_in)
+      Implicit none
+      CHARACTER(LEN=10) :: H5hydroFilename_in
+      Call readHydroFiles_initial(H5hydroFilename_in, 0, 500)
+      end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine readHydroFiles_initial(H5hydroFilename_in, 
+     &                              InputViscousFlag_in, bufferSize_in)
+      Use HDF5
+      Implicit none
+
+      CHARACTER(LEN=10) :: H5hydroFilename_in
+      CHARACTER(LEN=10) :: hydroFileH5name ! File name
+      CHARACTER(LEN=8) :: groupEventname = "/Event" ! Group name
+
+      Common /fileInfo/ hydroFileH5name, groupEventname
+
+      Integer :: InputViscousFlag_in, InputViscousFlag
+      Common /InputCtl/ InputViscousFlag
+
+      INTEGER(HID_T) :: file_id       ! File identifier
+      INTEGER(HID_T) :: group_id      ! Group identifier
+
+      Integer :: bufferSize_in
+      INTEGER     ::   error ! Error flag
+
+      hydroFileH5name = H5hydroFilename_in
+      InputViscousFlag = InputViscousFlag_in
+
+      ! Initialize FORTRAN interface.
+      CALL h5open_f(error)
+
+      ! open the hydro file
+      CALL h5fopen_f (hydroFileH5name, H5F_ACC_RDWR_F, file_id, error)
+
+      ! open a group
+      CALL h5gopen_f(file_id, groupEventname, group_id, error)
+
+      ! Read Attribute for group "Event"
+      Call readHydrogridInfo(group_id)
+      Call printHydrogridInfo()
+
+      ! Read datasets from the file
+      Call readHydroinfoBuffered_initialization(bufferSize_in)
+      Call readHydroinfoBuffered_total(group_id)
+
+      ! Close the groups.
+      CALL h5gclose_f(group_id, error)
+
+      ! Terminate access to the file.
+      CALL h5fclose_f(file_id, error)
+
+      ! Close FORTRAN interface.
+      CALL h5close_f(error)
+      end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine readHydrogridInfo(group_id)
+      Use HDF5
+      Implicit none
+
+      CHARACTER(LEN=10) :: hydroFileH5name ! File name
+      CHARACTER(LEN=8) :: groupEventname ! Group name
+
+      Common /fileInfo/ hydroFileH5name, groupEventname
+
+      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
+      Double precision :: hydroGrid_X0, hydroGrid_Y0
+      Double precision :: hydroGrid_DX, hydroGrid_DY
+      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
+      Double precision :: hydroGrid_Taumax
+      Integer :: hydroGrid_numOfframes
+
+      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
+     &                       hydroGrid_X0, hydroGrid_DX, 
+     &                       hydroGrid_YL, hydroGrid_YH, 
+     &                       hydroGrid_Y0, hydroGrid_DY, 
+     &                       hydroGrid_Tau0, hydroGrid_dTau,
+     &                       hydroGrid_Taumax,
+     &                       hydroGrid_numOfframes
+
+      Integer :: IFlag
+      Integer :: InputViscousFlag
+      Common /InputCtl/ InputViscousFlag
+
+      INTEGER(HID_T) :: group_id      ! Group identifier
+
+      Integer :: error
+
+      Call readH5Attribute_int(group_id, "XL", hydroGrid_XL)
+      Call readH5Attribute_int(group_id, "XH", hydroGrid_XH)
+      Call readH5Attribute_int(group_id, "YL", hydroGrid_YL)
+      Call readH5Attribute_int(group_id, "YH", hydroGrid_YH)
+      Call readH5Attribute_double(group_id, "DX", hydroGrid_DX)
+      Call readH5Attribute_double(group_id, "DY", hydroGrid_DY)
+      Call readH5Attribute_double(group_id, "Tau0", hydroGrid_Tau0)
+      Call readH5Attribute_double(group_id, "dTau", hydroGrid_dTau)
+      Call readH5Attribute_int(group_id, "OutputViscousFlag", IFlag)
+      
+      hydroGrid_X0 = hydroGrid_XL*hydroGrid_DX
+      hydroGrid_Y0 = hydroGrid_YL*hydroGrid_DY
+      
+      Call h5gn_members_f(group_id, groupEventname, 
+     &                    hydroGrid_numOfframes, error)
+      hydroGrid_Taumax = hydroGrid_Tau0 
+     &                   + (hydroGrid_numOfframes - 1)*hydroGrid_dTau
+
+      InputViscousFlag = InputViscousFlag * IFlag
+
+      end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine printHydrogridInfo()
+      Implicit none
+      
+      CHARACTER(LEN=10) :: hydroFileH5name ! File name
+      CHARACTER(LEN=8) :: groupEventname ! Group name
+
+      Common /fileInfo/ hydroFileH5name, groupEventname
+
+      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
+      Double precision :: hydroGrid_X0, hydroGrid_Y0
+      Double precision :: hydroGrid_DX, hydroGrid_DY
+      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
+      Double precision :: hydroGrid_Taumax
+      Integer :: hydroGrid_numOfframes
+
+      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
+     &                       hydroGrid_X0, hydroGrid_DX, 
+     &                       hydroGrid_YL, hydroGrid_YH, 
+     &                       hydroGrid_Y0, hydroGrid_DY, 
+     &                       hydroGrid_Tau0, hydroGrid_dTau,
+     &                       hydroGrid_Taumax,
+     &                       hydroGrid_numOfframes
+      
+      Integer :: InputViscousFlag
+      Common /InputCtl/ InputViscousFlag
+
+      write(*,'(A)')"--------------------------------------------------"
+      write(*,'(A)')"--------------- hydro grid info ------------------"
+      write(*,'(A)')"--------------------------------------------------"
+      write(*,'(A, A)')"Filename : ", hydroFileH5name
+      write(*,'(A, I5)') "XL = ", hydroGrid_XL
+      write(*,'(A, I5)') "XH = ", hydroGrid_XH
+      write(*,'(A, F5.3, A)') "DX = ", hydroGrid_DX, " fm"
+      write(*,'(A, I5)') "YL = ", hydroGrid_YL
+      write(*,'(A, I5)') "YH = ", hydroGrid_YH
+      write(*,'(A, F5.3, A)') "DY = ", hydroGrid_DY, " fm"
+      write(*,'(A, F5.3, A)') "Tau0 = ", hydroGrid_Tau0, " fm/c"
+      write(*,'(A, F5.3, A)') "dTau = ", hydroGrid_dTau, " fm/c"
+      write(*,'(A, I5)') "number of Frames = ", hydroGrid_numOfframes
+      write(*,'(A, F5.3, A)') "Tau_max = ", hydroGrid_Taumax, " fm/c"
+      write(*,"(A, I5)")"Readin viscous information : ",InputViscousFlag
+      write(*,'(A)')"--------------------------------------------------"
+
+      end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine readH5Attribute_int(group_id, aname, avalue)
+      Use HDF5
+      Implicit none
+
+      CHARACTER(LEN=*) :: aname       ! Attribute name
+      Integer :: avalue      ! Attribute value
+      INTEGER(HID_T) :: group_id      ! Group identifier
+
+      INTEGER(HID_T) :: attr_id       ! Attribute identifier
+      INTEGER(HID_T) :: aspace_id     ! Attribute Dataspace identifier
+      Integer(HID_T) :: atype_id
+      
+      INTEGER(HSIZE_T), DIMENSION(1) :: adims = (/1/) ! Attribute dimension
+      INTEGER     ::   arank = 1                      ! Attribure rank
+      
+      INTEGER     ::   error ! Error flag
+      
+      ! open an attribute
+      Call h5aopen_name_f(group_id, aname, attr_id, error)
+      ! read an attribute
+      Call h5aread_f(attr_id, H5T_NATIVE_INTEGER, avalue, adims, error)
+      ! close an attribute
+      Call h5aclose_f(attr_id, error)
+
+      end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine readH5Attribute_double(group_id, aname, avalue)
+      Use HDF5
+      Implicit none
+
+      CHARACTER(LEN=*) :: aname       ! Attribute name
+      Double precision :: avalue      ! Attribute value
+      INTEGER(HID_T) :: group_id      ! Group identifier
+
+      INTEGER(HID_T) :: attr_id       ! Attribute identifier
+      INTEGER(HID_T) :: aspace_id     ! Attribute Dataspace identifier
+      Integer(HID_T) :: atype_id
+      
+      INTEGER(HSIZE_T), DIMENSION(1) :: adims = (/1/) ! Attribute dimension
+      INTEGER     ::   arank = 1                      ! Attribure rank
+      
+      INTEGER     ::   error ! Error flag
+      
+      ! open an attribute
+      Call h5aopen_name_f(group_id, aname, attr_id, error)
+      ! read an attribute
+      Call h5aread_f(attr_id, H5T_NATIVE_DOUBLE, avalue, adims, error)
+      ! close an attribute
+      Call h5aclose_f(attr_id, error)
+
+      end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine readHydroinfoBuffered_initialization(bufferSize_in)
+      Implicit None
+      
+      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
+      Double precision :: hydroGrid_X0, hydroGrid_Y0
+      Double precision :: hydroGrid_DX, hydroGrid_DY
+      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
+      Double precision :: hydroGrid_Taumax
+      Integer :: hydroGrid_numOfframes
+      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
+     &                       hydroGrid_X0, hydroGrid_DX, 
+     &                       hydroGrid_YL, hydroGrid_YH, 
+     &                       hydroGrid_Y0, hydroGrid_DY, 
+     &                       hydroGrid_Tau0, hydroGrid_dTau,
+     &                       hydroGrid_Taumax,
+     &                       hydroGrid_numOfframes
+
+      Integer:: bufferSize
+      Integer:: bufferSize_in
+
+      ! the last index is the buffer "layer" index that goes from 1 to bufferSize
+      Double Precision, Pointer::
+     & eM(:,:,:), PM(:,:,:), sM(:,:,:), TM(:,:,:), vxM(:,:,:), 
+     & vyM(:,:,:),
+     & pi00M(:,:,:), pi01M(:,:,:), pi02M(:,:,:), pi03M(:,:,:), 
+     & pi11M(:,:,:), pi12M(:,:,:), pi13M(:,:,:), pi22M(:,:,:),
+     & pi23M(:,:,:), pi33M(:,:,:), BulkPiM(:,:,:)
+
+      Common /bufferedData/ bufferSize, 
+     &  eM, PM, sM, TM, vxM, vyM, 
+     &  pi00M, pi01M, pi02M, pi03M, pi11M, pi12M, pi13M, pi22M,
+     &  pi23M, pi33M, BulkPiM
+
+      bufferSize = bufferSize_in
+      Allocate(eM(hydroGrid_XL:hydroGrid_XH, hydroGrid_YL:hydroGrid_YH, 
+     &            1:bufferSize))
+      Allocate(PM(hydroGrid_XL:hydroGrid_XH, hydroGrid_YL:hydroGrid_YH, 
+     &            1:bufferSize))
+      Allocate(sM(hydroGrid_XL:hydroGrid_XH, hydroGrid_YL:hydroGrid_YH, 
+     &            1:bufferSize))
+      Allocate(TM(hydroGrid_XL:hydroGrid_XH, hydroGrid_YL:hydroGrid_YH, 
+     &            1:bufferSize))
+      Allocate(vxM(hydroGrid_XL:hydroGrid_XH, hydroGrid_YL:hydroGrid_YH,
+     &             1:bufferSize))
+      Allocate(vyM(hydroGrid_XL:hydroGrid_XH, hydroGrid_YL:hydroGrid_YH,
+     &             1:bufferSize))
+      Allocate(pi00M(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+      Allocate(pi01M(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+      Allocate(pi02M(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+      Allocate(pi03M(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+      Allocate(pi11M(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+      Allocate(pi12M(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+      Allocate(pi13M(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+      Allocate(pi22M(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+      Allocate(pi23M(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+      Allocate(pi33M(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+      Allocate(BulkPiM(hydroGrid_XL:hydroGrid_XH, 
+     &               hydroGrid_YL:hydroGrid_YH, 1:bufferSize))
+
+      end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine readHydroinfoBuffered_total(group_id)
+      Use HDF5
+      Implicit None
+
+      CHARACTER(LEN=10) :: hydroFileH5name ! File name
+      CHARACTER(LEN=8) :: groupEventname ! Group name
+      Common /fileInfo/ hydroFileH5name, groupEventname
+      
+      CHARACTER(LEN=10) :: frameName       ! Group frame name
+      Character(Len=4) :: frame_id_string
+      
+      INTEGER(HID_T) :: group_id      ! Group identifier
+      INTEGER(HID_T) :: groupFrame_id ! Group identifier
+      Integer :: error
+
+      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
+      Double precision :: hydroGrid_X0, hydroGrid_Y0
+      Double precision :: hydroGrid_DX, hydroGrid_DY
+      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
+      Double precision :: hydroGrid_Taumax
+      Integer :: hydroGrid_numOfframes
+      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
+     &                       hydroGrid_X0, hydroGrid_DX, 
+     &                       hydroGrid_YL, hydroGrid_YH, 
+     &                       hydroGrid_Y0, hydroGrid_DY, 
+     &                       hydroGrid_Tau0, hydroGrid_dTau,
+     &                       hydroGrid_Taumax,
+     &                       hydroGrid_numOfframes
+
+      Integer :: InputViscousFlag
+      Common /InputCtl/ InputViscousFlag
+
+      Double Precision, Dimension(hydroGrid_XL:hydroGrid_XH,
+     &  hydroGrid_YL:hydroGrid_YH, 1:1) :: Ed, P, Sd, Temp, Vx, Vy,
+     &  pi00, pi01, pi02, pi03, pi11, pi12, pi13, pi22, pi23, pi33,
+     &  BulkPi
+
+      Double Precision :: Time
+
+      Integer:: bufferSize
+
+      ! the last index is the buffer "layer" index that goes from 1 to bufferSize
+      Double Precision, Pointer::
+     & eM(:,:,:), PM(:,:,:), sM(:,:,:), TM(:,:,:), vxM(:,:,:), 
+     & vyM(:,:,:),
+     & pi00M(:,:,:), pi01M(:,:,:), pi02M(:,:,:), pi03M(:,:,:), 
+     & pi11M(:,:,:), pi12M(:,:,:), pi13M(:,:,:), pi22M(:,:,:),
+     & pi23M(:,:,:), pi33M(:,:,:), BulkPiM(:,:,:)
+
+      Common /bufferedData/ bufferSize, 
+     &  eM, PM, sM, TM, vxM, vyM, 
+     &  pi00M, pi01M, pi02M, pi03M, pi11M, pi12M, pi13M, pi22M,
+     &  pi23M, pi33M, BulkPiM
+       
+      Integer :: J
+
+      if(bufferSize .lt. hydroGrid_numOfframes) then
+         write(*,*) "BufferSize is too small, increase it to at least", 
+     &              hydroGrid_numOfframes
+         stop
+      endif
+      Do J = 1, hydroGrid_numOfframes
+        write(unit=frame_id_string, fmt='(I4.4)') J-1
+        frameName = "Frame_" // frame_id_string 
+        CALL h5gopen_f(group_id, frameName, groupFrame_id, error)
+        
+        Call readH5Dataset_double(groupFrame_id, "e", Ed)
+        Call readH5Dataset_double(groupFrame_id, "s", Sd)
+        Call readH5Dataset_double(groupFrame_id, "P", P)
+        Call readH5Dataset_double(groupFrame_id, "Temp", Temp)
+        Call readH5Dataset_double(groupFrame_id, "Vx", Vx)
+        Call readH5Dataset_double(groupFrame_id, "Vy", Vy)
+        if(InputViscousFlag .eq. 1) then
+          Call readH5Dataset_double(groupFrame_id, "Pi00", pi00)
+          Call readH5Dataset_double(groupFrame_id, "Pi01", pi01)
+          Call readH5Dataset_double(groupFrame_id, "Pi02", pi02)
+          Call readH5Dataset_double(groupFrame_id, "Pi03", pi03)
+          Call readH5Dataset_double(groupFrame_id, "Pi11", pi11)
+          Call readH5Dataset_double(groupFrame_id, "Pi12", pi12)
+          Call readH5Dataset_double(groupFrame_id, "Pi13", pi13)
+          Call readH5Dataset_double(groupFrame_id, "Pi22", pi22)
+          Call readH5Dataset_double(groupFrame_id, "Pi23", pi23)
+          Call readH5Dataset_double(groupFrame_id, "Pi33", pi33)
+          Call readH5Dataset_double(groupFrame_id, "BulkPi", BulkPi)
+        endif
+        ! write to the buffer:
+        eM(:,:,J) = Ed(:,:,1)
+        PM(:,:,J) = P(:,:,1)
+        sM(:,:,J) = Sd(:,:,1)
+        TM(:,:,J) = Temp(:,:,1)
+        vxM(:,:,J) = Vx(:,:,1)
+        vyM(:,:,J) = Vy(:,:,1)
+        if(InputViscousFlag .eq. 1) then
+          pi00M(:,:,J) = pi00(:,:,1)
+          pi01M(:,:,J) = pi01(:,:,1)
+          pi02M(:,:,J) = pi02(:,:,1)
+          pi03M(:,:,J) = pi03(:,:,1)
+          pi11M(:,:,J) = pi11(:,:,1)
+          pi12M(:,:,J) = pi12(:,:,1)
+          pi13M(:,:,J) = pi13(:,:,1)
+          pi22M(:,:,J) = pi22(:,:,1)
+          pi23M(:,:,J) = pi23(:,:,1)
+          pi33M(:,:,J) = pi33(:,:,1)
+          BulkPiM(:,:,J) = BulkPi(:,:,1)
+        endif
+      
+      ! Close the groups.
+      CALL h5gclose_f(groupFrame_id, error)
+      EndDo
+
+      End
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine readH5Dataset_double(group_id, datasetName, dset_data)
+      Use HDF5
+      Implicit None
+      
+      CHARACTER(LEN=*) :: datasetName       ! Dataset name
+      INTEGER(HID_T) :: group_id      ! Group identifier
+      INTEGER(HID_T) :: dset_id       ! Dataset identifier
+      
+      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
+      Double precision :: hydroGrid_X0, hydroGrid_Y0
+      Double precision :: hydroGrid_DX, hydroGrid_DY
+      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
+      Double precision :: hydroGrid_Taumax
+      Integer :: hydroGrid_numOfframes
+      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
+     &                       hydroGrid_X0, hydroGrid_DX, 
+     &                       hydroGrid_YL, hydroGrid_YH, 
+     &                       hydroGrid_Y0, hydroGrid_DY, 
+     &                       hydroGrid_Tau0, hydroGrid_dTau,
+     &                       hydroGrid_Taumax,
+     &                       hydroGrid_numOfframes
+      
+      INTEGER(HSIZE_T), DIMENSION(2) :: data_dims
+      Double precision, Dimension(hydroGrid_XL:hydroGrid_XH, 
+     &  hydroGrid_YL:hydroGrid_YH, 1:1) :: dset_data
+      Integer :: error
+      
+      data_dims(1) = hydroGrid_XH - hydroGrid_XL + 1
+      data_dims(2) = hydroGrid_YH - hydroGrid_YL + 1
+
+      ! Open an existing dataset.
+      CALL h5dopen_f(group_id, datasetName, dset_id, error)
+
+      ! Read the dataset.
+      CALL h5dread_f(dset_id, H5T_NATIVE_DOUBLE, dset_data, data_dims, 
+     &               error)
+     
+      ! Close the dataset.
+      CALL h5dclose_f(dset_id, error)
+      
+      end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine readHydroinfoBuffered_ideal(tau,x,y,e,p,s,T,vx,vy)
+!     Return infos from hydro data file
+!     -- tau,x,y: coordinates (in)
+!     -- e,p,s,T,vx,vy: infos (out)
+      Implicit None
+
+      Double Precision:: tau,x,y,e,p,s,T,vx,vy
+
+      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
+      Double precision :: hydroGrid_X0, hydroGrid_Y0
+      Double precision :: hydroGrid_DX, hydroGrid_DY
+      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
+      Double precision :: hydroGrid_Taumax
+      Integer :: hydroGrid_numOfframes
+      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
+     &                       hydroGrid_X0, hydroGrid_DX, 
+     &                       hydroGrid_YL, hydroGrid_YH, 
+     &                       hydroGrid_Y0, hydroGrid_DY, 
+     &                       hydroGrid_Tau0, hydroGrid_dTau,
+     &                       hydroGrid_Taumax,
+     &                       hydroGrid_numOfframes
+
+      Double Precision, Dimension(1:2,1:2) :: Ed1,P1,Sd1,Temp1,VxB1,VyB1
+      Double Precision, Dimension(1:2,1:2) :: Ed2,P2,Sd2,Temp2,VxB2,VyB2
+
+      Integer:: tauI ! tau should lie between Tau0+dTau*tauI and Tau0+dTau*(tauI+1)
+      Double Precision:: tauInc ! tau=Tau0+tauI1*dTau+Tau_inc*dTau, inc for increament (normalized to 0~1)
+
+      Integer:: xi, yi ! similar to tau
+      Double Precision:: xInc, yInc ! x=xi*DX+xInc*DX
+
+      Double Precision:: var1 ! temporary variables
+
+      ! first deal with tau
+      if (tau < hydroGrid_Tau0 .AND. tau > hydroGrid_Tau0 - 1D-15) then
+         tau = hydroGrid_Tau0
+      endif
+      var1 = (tau-hydroGrid_Tau0)/hydroGrid_dTau
+      tauI = Floor(var1)
+      tauInc = var1-tauI
+
+      ! then x and y
+      var1 = (x)/hydroGrid_DX
+      xi = Floor(var1)
+      xInc = var1-xi
+      var1 = (y)/hydroGrid_DY
+      yi = Floor(var1)
+      yInc = var1-yi
+
+!     For debug:
+!      Print*, "tau, Tau0, dTau, tauI, tauInc=",
+!     &        tau, Tau0, dTau, tauI, tauInc
+!      Print*, "x,xi,xInc,y,yi,yInc=",
+!     &        x,xi,xInc,y,yi,yInc
+
+      Call readHydroBlockBufferedOrdered_ideal
+     &    (tauI+1,xi,yi,Ed1,P1,Sd1,Temp1,VxB1,VyB1) ! tauI+1: tauI=0 <-> 1st block
+      Call readHydroBlockBufferedOrdered_ideal
+     &    (tauI+2,xi,yi,Ed2,P2,Sd2,Temp2,VxB2,VyB2)
+
+      Call cubeInterp(xInc,yInc,tauInc,e,
+     &  Ed1(1,1),Ed1(1+1,1),Ed1(1,1+1),Ed1(1+1,1+1),
+     &  Ed2(1,1),Ed2(1+1,1),Ed2(1,1+1),Ed2(1+1,1+1))
+
+      Call cubeInterp(xInc,yInc,tauInc,p,
+     &  P1(1,1),P1(1+1,1),P1(1,1+1),P1(1+1,1+1),
+     &  P2(1,1),P2(1+1,1),P2(1,1+1),P2(1+1,1+1))
+
+      Call cubeInterp(xInc,yInc,tauInc,s,
+     &  Sd1(1,1),Sd1(1+1,1),Sd1(1,1+1),Sd1(1+1,1+1),
+     &  Sd2(1,1),Sd2(1+1,1),Sd2(1,1+1),Sd2(1+1,1+1))
+
+      Call cubeInterp(xInc,yInc,tauInc,T,
+     &  Temp1(1,1),Temp1(1+1,1),
+     &  Temp1(1,1+1),Temp1(1+1,1+1),
+     &  Temp2(1,1),Temp2(1+1,1),
+     &  Temp2(1,1+1),Temp2(1+1,1+1))
+
+      Call cubeInterp(xInc,yInc,tauInc,vx,
+     &  VxB1(1,1),VxB1(1+1,1),VxB1(1,1+1),VxB1(1+1,1+1),
+     &  VxB2(1,1),VxB2(1+1,1),VxB2(1,1+1),VxB2(1+1,1+1))
+
+      Call cubeInterp(xInc,yInc,tauInc,vy,
+     &  VyB1(1,1),VyB1(1+1,1),VyB1(1,1+1),VyB1(1+1,1+1),
+     &  VyB2(1,1),VyB2(1+1,1),VyB2(1,1+1),VyB2(1+1,1+1))
+
+      End Subroutine
+!-----------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine readHydroBlockBufferedOrdered_ideal
+     &    (idxTau,idxX,idxY,Ed22,P22,Sd22,Temp22,VxB22,VyB22)
+!     Read only the 2x2 block froEdm the buffer or file at
+!     tauI=idxTau, index_x=idxX, and index_y=idxY
+!     This version assumes all the required hydro info are in the buffer
+      Implicit None
+
+      Integer :: idxTau, idxX, idxY
+
+      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
+      Double precision :: hydroGrid_X0, hydroGrid_Y0
+      Double precision :: hydroGrid_DX, hydroGrid_DY
+      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
+      Double precision :: hydroGrid_Taumax
+      Integer :: hydroGrid_numOfframes
+      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
+     &                       hydroGrid_X0, hydroGrid_DX, 
+     &                       hydroGrid_YL, hydroGrid_YH, 
+     &                       hydroGrid_Y0, hydroGrid_DY, 
+     &                       hydroGrid_Tau0, hydroGrid_dTau,
+     &                       hydroGrid_Taumax,
+     &                       hydroGrid_numOfframes
+      Double Precision, Dimension(hydroGrid_XL:hydroGrid_XH,
+     & hydroGrid_YL:hydroGrid_YH, 1:1) :: Ed,P,Sd,Temp,VxB,VyB
+
+      Double Precision, Dimension(1:2,1:2) ::
+     &    Ed22,P22,Sd22,Temp22,VxB22,VyB22
+
+      Integer:: bufferSize
+
+      ! the last index is the buffer "layer" index that goes from 1 to bufferSize
+      Double Precision, Pointer::
+     & eM(:,:,:), PM(:,:,:), sM(:,:,:), TM(:,:,:), vxM(:,:,:), 
+     & vyM(:,:,:),
+     & pi00M(:,:,:), pi01M(:,:,:), pi02M(:,:,:), pi03M(:,:,:), 
+     & pi11M(:,:,:), pi12M(:,:,:), pi13M(:,:,:), pi22M(:,:,:),
+     & pi23M(:,:,:), pi33M(:,:,:), BulkPiM(:,:,:)
+
+      Common /bufferedData/ bufferSize, 
+     &  eM, PM, sM, TM, vxM, vyM, 
+     &  pi00M, pi01M, pi02M, pi03M, pi11M, pi12M, pi13M, pi22M,
+     &  pi23M, pi33M, BulkPiM
+
+      If (idxTau < 0 .OR. idxTau > bufferSize .or. 
+     &    idxTau > hydroGrid_numOfframes) Then
+        Ed22(:,:) = 0D0
+        P22(:,:) = 0D0
+        Sd22(:,:) = 0D0
+        Temp22(:,:) = 0D0
+        VxB22(:,:) = 0D0
+        VyB22(:,:) = 0D0
+        Return
+      End If
+
+      If (idxX < hydroGrid_XL .OR. idxX > hydroGrid_XH) Then
+        Ed22(:,:) = 0D0
+        P22(:,:) = 0D0
+        Sd22(:,:) = 0D0
+        Temp22(:,:) = 0D0
+        VxB22(:,:) = 0D0
+        VyB22(:,:) = 0D0
+        Return
+      End If
+
+      If (idxY < hydroGrid_YL .OR. idxY > hydroGrid_YH) Then
+        Ed22(:,:) = 0D0
+        P22(:,:) = 0D0
+        Sd22(:,:) = 0D0
+        Temp22(:,:) = 0D0
+        VxB22(:,:) = 0D0
+        VyB22(:,:) = 0D0
+        Return
+      End If
+
+      ! read it from buffer:
+      Ed22(:,:) = eM(idxX:idxX+1,idxY:idxY+1,idxTau)
+      P22(:,:) = PM(idxX:idxX+1,idxY:idxY+1,idxTau)
+      Sd22(:,:) = sM(idxX:idxX+1,idxY:idxY+1,idxTau)
+      Temp22(:,:) = TM(idxX:idxX+1,idxY:idxY+1,idxTau)
+      VxB22(:,:) = vxM(idxX:idxX+1,idxY:idxY+1,idxTau)
+      VyB22(:,:) = vyM(idxX:idxX+1,idxY:idxY+1,idxTau)
+
+      End Subroutine
+!------------------------------------------------------------------------
+
+!***********************************************************************
+      Subroutine cubeInterp(x,y,z,Axyz,
+     &                      A000,A100,A010,A110,A001,A101,A011,A111)
+! Perform a 3d interpolation. The known data are A### located at the 8 corners,
+! labels using the xyz order. Therefore A000 is value at the origin and A010
+! is the value at (x=0,y=1,z=0). Note that the coordinate (x,y,z) must be
+! constrained to the unit cube. Axyz is the return value.
+
+      Implicit None
+      Double Precision :: x,y,z,Axyz
+      Double Precision :: A000,A100,A010,A110,A001,A101,A011,A111
+
+      Axyz = A000*(1-x)*(1-y)*(1-z) + A100*x*(1-y)*(1-z) +
+     &    A010*(1-x)*y*(1-z) + A001*(1-x)*(1-y)*z +
+     &    A101*x*(1-y)*z + A011*(1-x)*y*z +
+     &    A110*x*y*(1-z) + A111*x*y*z
+
+      !If (debug == 1) Then
+      !  Print *, "cubeInterp"
+      !  Print *, "x,y,z=",x,y,z
+      !  Print *, "A000,A100,A010,A110=",A000,A100,A010,A110
+      !  Print *, "A001,A101,A011,A111=",A001,A101,A011,A111
+      !  Print *, "Axyz=", Axyz
+      !End If
+
+      RETURN
+      END
 !-----------------------------------------------------------------------
