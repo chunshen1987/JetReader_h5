@@ -975,29 +975,6 @@
 !-----------------------------------------------------------------------
 
 !***********************************************************************
-      Subroutine getJetTauMax(x0,y0,dirX,dirY,cutT,step,tauMax)
-      Implicit None
-      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
-      Double precision :: hydroGrid_X0, hydroGrid_Y0
-      Double precision :: hydroGrid_DX, hydroGrid_DY
-      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
-      Double precision :: hydroGrid_Taumax
-      Integer :: hydroGrid_numOfframes
-      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
-     &                       hydroGrid_X0, hydroGrid_DX, 
-     &                       hydroGrid_YL, hydroGrid_YH, 
-     &                       hydroGrid_Y0, hydroGrid_DY, 
-     &                       hydroGrid_Tau0, hydroGrid_dTau,
-     &                       hydroGrid_Taumax,
-     &                       hydroGrid_numOfframes
-
-      Double precision :: x0, y0, dirX, dirY, cutT, step, tauMax
-
-      Call getJetDeltaTauMax(x0,y0,dirX,dirY,cutT,step,tauMax)
-      tauMax = tauMax + hydroGrid_Tau0
-      end
-!-----------------------------------------------------------------------
-!***********************************************************************
       Subroutine getJetDeltaTauMax(x0,y0,dirX,dirY,cutT,step,deltaTau)
 !     Return the max possible deltaTau that determines the length of the
 !     path of a jet positioned at (x0,y0) with direction (dirX,dirY). The
@@ -1089,10 +1066,17 @@
           deltaTau=0D0
           Exit
         EndIf
-        Call readHydroinfoBuffered_ideal(jetLength + hydroGrid_Tau0,
-     &                        x0+dirX/dirNorm*(jetLength),
-     &                        y0+dirY/dirNorm*(jetLength),
+        if(jetLength < hydroGrid_Tau0) then
+          call readHydroinfoBuffered_ideal(hydroGrid_Tau0,
+     &                        x0+dirX/dirNorm*(jetLength), !
+     &                        y0+dirY/dirNorm*(jetLength), !
      &                        e,p,s,T,vx,vy)
+        else
+          Call readHydroinfoBuffered_ideal(jetLength,
+     &                        x0+dirX/dirNorm*(jetLength), !
+     &                        y0+dirY/dirNorm*(jetLength), !
+     &                        e,p,s,T,vx,vy)
+        endif
         If (T>=cutT) Then
           deltaTau = jetLength
           Exit

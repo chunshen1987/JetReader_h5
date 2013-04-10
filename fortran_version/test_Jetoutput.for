@@ -24,32 +24,34 @@
       Double precision, Dimension(XL:XH, YL:YH, 1:1):: BulkPi
 
       double precision :: ee, pp, ss, TT, vxx, vyy, deltau
+      double precision :: jet_avglength, jet_avglength_in, 
+     &                    jet_avglength_out
       
-      Ed = 10.4d0
-      Sd = 1.0d0
-      P = 0.0d0
-      Temp = 1.0d0
-      Vx = 1.0d0
-      Vy = 0.5d0
-      Pi00 = 0.0d0
-      Pi01 = 0.0d0
-      Pi02 = 0.0d0
-      Pi03 = 0.0d0
-      Pi11 = 0.0d0
-      Pi12 = 0.0d0
-      Pi13 = 0.0d0
-      Pi22 = 0.0d0
-      Pi23 = 0.0d0
-      Pi33 = 0.0d0
-      BulkPi = 0.0d0
-      Call setHydroFiles(XL, XH, DX, LSX, YL, YH, DY, LSY, Tau0, dTau, 
-     &                   LST)
-      
-      do Frame_id = 0, 10
-         Call writeHydroBlock(Frame_id, Ed, Sd, P, Temp, Vx, Vy,
-     &      Pi00, Pi01, Pi02, Pi03, Pi11, Pi12, Pi13, Pi22, Pi23, Pi33, 
-     &      BulkPi)
-      enddo
+!      Ed = 10.4d0
+!      Sd = 1.0d0
+!      P = 0.0d0
+!      Temp = 1.0d0
+!      Vx = 1.0d0
+!      Vy = 0.5d0
+!      Pi00 = 0.0d0
+!      Pi01 = 0.0d0
+!      Pi02 = 0.0d0
+!      Pi03 = 0.0d0
+!      Pi11 = 0.0d0
+!      Pi12 = 0.0d0
+!      Pi13 = 0.0d0
+!      Pi22 = 0.0d0
+!      Pi23 = 0.0d0
+!      Pi33 = 0.0d0
+!      BulkPi = 0.0d0
+!      Call setHydroFiles(XL, XH, DX, LSX, YL, YH, DY, LSY, Tau0, dTau, 
+!     &                   LST)
+!      
+!      do Frame_id = 0, 10
+!         Call writeHydroBlock(Frame_id, Ed, Sd, P, Temp, Vx, Vy,
+!     &      Pi00, Pi01, Pi02, Pi03, Pi11, Pi12, Pi13, Pi22, Pi23, Pi33, 
+!     &      BulkPi)
+!      enddo
 
       Call readHydroFiles_initialEZ("JetData.h5")
       Call readHydroinfoBuffered_ideal(0.63d0, 0.0d0, 0.0d0, 
@@ -57,6 +59,9 @@
       write(*,*) ee
       call getJetDeltaTauMax(0.0d0,0.0d0,1.0d0,0.0d0, 0.2, 0.05, deltau)
       write(*,*) deltau
+!      call getJetavgLength_shell(0.12d0, 10.0d0, jet_avglength, 
+!     &   jet_avglength_in, jet_avglength_out)
+!      write(*,*) jet_avglength, jet_avglength_in, jet_avglength_out
 
       stop
       end
