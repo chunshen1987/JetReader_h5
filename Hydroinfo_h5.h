@@ -5,7 +5,6 @@
 #include<sstream>
 #include<string>
 
-#include "ParameterReader.h"
 #include "hdf5.h"
 
 using namespace std;
@@ -19,7 +18,6 @@ struct fluidCell {
 class HydroinfoH5
 {
    private:
-      ParameterReader* paraRdr;
       int Visflag;  // flag to determine whether to read evolutions for viscous variables
 
       int Buffersize;
@@ -38,7 +36,7 @@ class HydroinfoH5
       double ***BulkPi;
 
    public:
-      HydroinfoH5(string file, ParameterReader* paraRdr_in);
+      HydroinfoH5(string filename, int bufferSize_in, int Visflag_in);
       ~HydroinfoH5();
       
       void readHydrogridInfo();
@@ -65,6 +63,8 @@ class HydroinfoH5
       void getHydroinfoOnlattice(int frameIdx, int xIdx, int yIdx, fluidCell* fluidCellptr);
       void getHydroinfo(double tau, double x, double y, fluidCell* fluidCellptr);
       void setZero_fluidCell(fluidCell* fluidCellptr);
+
+      double cubeInterp(double x, double y, double z, double A000, double A100, double A010, double A110, double A001, double A101, double A011, double A111);
 
 };
 
