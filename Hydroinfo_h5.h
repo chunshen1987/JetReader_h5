@@ -18,6 +18,9 @@ struct fluidCell {
 class HydroinfoH5
 {
    private:
+      int readinFlag;
+      int outputFlag;
+
       int Visflag;  // flag to determine whether to read evolutions for viscous variables
 
       int Buffersize;
@@ -30,15 +33,23 @@ class HydroinfoH5
       double grid_Tau0, grid_dTau, grid_dx, grid_dy;
       double grid_Taumax;
 
+      int grid_LSX, grid_LSY, grid_LST;
+
       int dimensionX, dimensionY;
       double ***ed, ***sd, ***vx, ***vy, ***Temperature, ***Pressure;
       double ***pi00, ***pi01, ***pi02, ***pi03, ***pi11, ***pi12, ***pi13, ***pi22, ***pi23, ***pi33;
       double ***BulkPi;
 
    public:
-      HydroinfoH5(string filename, int bufferSize_in, int Visflag_in);
+      HydroinfoH5();
       ~HydroinfoH5();
       
+      void setHydroFiles(int XL_in, int XH_in, double DX_in, int LSX_in, int YL_in, int YH_in, double DY_in, int LSY_in, double Tau0_in, double dTau_in, double LST_in, int Visflag_in, string filename);
+      void writeGroupattribute(hid_t H5groupEventid);
+      void addGroupattributeInt(hid_t H5groupEventid, string attName, int attValue);
+      void addGroupattributeDouble(hid_t H5groupEventid, string attName, double attValue);
+
+      void readHydroinfoH5(string filename, int bufferSize_in, int Visflag_in);
       void readHydrogridInfo();
       void printHydrogridInfo();
       int readH5Attribute_int(hid_t id, string attributeName);

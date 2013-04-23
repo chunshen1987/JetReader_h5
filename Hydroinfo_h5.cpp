@@ -10,8 +10,168 @@
 
 using namespace std;
 
-HydroinfoH5::HydroinfoH5(string filename, int bufferSize_in, int Visflag_in)
+HydroinfoH5::HydroinfoH5()
 {
+   readinFlag = 0;
+   outputFlag = 0;
+}
+
+HydroinfoH5::~HydroinfoH5()
+{
+   if(readinFlag == 1)
+   {
+      for(int i=0; i<Buffersize; i++)
+      {
+         for(int j=0; j<dimensionX; j++)
+         {
+            delete[] ed[i][j];
+            delete[] sd[i][j];
+            delete[] vx[i][j];
+            delete[] vy[i][j];
+            delete[] Temperature[i][j];
+            delete[] Pressure[i][j];
+            delete[] pi00[i][j];
+            delete[] pi01[i][j];
+            delete[] pi02[i][j];
+            delete[] pi03[i][j];
+            delete[] pi11[i][j];
+            delete[] pi12[i][j];
+            delete[] pi13[i][j];
+            delete[] pi22[i][j];
+            delete[] pi23[i][j];
+            delete[] pi33[i][j];
+            delete[] BulkPi[i][j];
+         }
+         delete[] ed[i];
+         delete[] sd[i];
+         delete[] vx[i];
+         delete[] vy[i];
+         delete[] Temperature[i];
+         delete[] Pressure[i];
+         delete[] pi00[i];
+         delete[] pi01[i];
+         delete[] pi02[i];
+         delete[] pi03[i];
+         delete[] pi11[i];
+         delete[] pi12[i];
+         delete[] pi13[i];
+         delete[] pi22[i];
+         delete[] pi23[i];
+         delete[] pi33[i];
+         delete[] BulkPi[i];
+      }
+      delete[] ed;
+      delete[] sd;
+      delete[] vx;
+      delete[] vy;
+      delete[] Temperature;
+      delete[] Pressure;
+      delete[] pi00;
+      delete[] pi01;
+      delete[] pi02;
+      delete[] pi03;
+      delete[] pi11;
+      delete[] pi12;
+      delete[] pi13;
+      delete[] pi22;
+      delete[] pi23;
+      delete[] pi33;
+      delete[] BulkPi;
+   }
+}
+
+void HydroinfoH5::setHydroFiles(int XL_in, int XH_in, double DX_in, int LSX_in, int YL_in, int YH_in, double DY_in, int LSY_in, double Tau0_in, double dTau_in, double LST_in, int Visflag_in, string filename)
+{
+    outputFlag = 1;
+    grid_XL = XL_in;
+    grid_XH = XH_in;
+    grid_dx = DX_in;
+    grid_YL = YL_in;
+    grid_YH = YH_in;
+    grid_dy = DY_in;
+    grid_Tau0 = Tau0_in;
+    grid_dTau = dTau_in;
+    grid_LSX = LSX_in;
+    grid_LSY = LSY_in;
+    grid_LST = LST_in;
+    Visflag = Visflag_in;
+
+    const char *fileptr = (char*) filename.c_str();
+    herr_t status;
+    /* Create a new file using default properties. */
+    H5file_id = H5Fcreate(fileptr, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    
+    /* Create a group named "/Event" in the file. */
+    H5groupEventid = H5Gcreate(H5file_id, "/Event", H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+    writeGroupattribute(H5groupEventid);
+
+    /* Close the group. */
+    status = H5Gclose(H5groupEventid);
+    /* Terminate access to the file. */
+    status = H5Fclose(H5file_id); 
+}
+
+void HydroinfoH5::writeGroupattribute(hid_t H5groupEventid)
+{
+    int XShift = abs(grid_XL%grid_LSX);
+    int YShift = abs(grid_YL%grid_LSY);
+    addGroupattributeInt(H5groupEventid, "XL", (grid_XL + XShift)/grid_LSX);
+    addGroupattributeInt(H5groupEventid, "XH", (grid_XH - XShift)/grid_LSX);
+    addGroupattributeInt(H5groupEventid, "YL", (grid_YL + YShift)/grid_LSY);
+    addGroupattributeInt(H5groupEventid, "YH", (grid_YH - YShift)/grid_LSY);
+    addGroupattributeDouble(H5groupEventid, "DX", grid_dx*grid_LSX);
+    addGroupattributeDouble(H5groupEventid, "DY", grid_dy*grid_LSX);
+    addGroupattributeDouble(H5groupEventid, "Tau0", grid_Tau0);
+    addGroupattributeDouble(H5groupEventid, "dTau", grid_dTau*grid_LST);
+    addGroupattributeInt(H5groupEventid, "OutputViscousFlag", Visflag);
+}
+
+void HydroinfoH5::addGroupattributeInt(hid_t H5groupEventid, string attName, int attValue)
+{
+   herr_t status;
+   hsize_t dims;
+   hid_t attribute_id, dataspace_id;
+   
+   /* Create the data space for the attribute. */
+   dims = 1;
+   dataspace_id = H5Screate_simple(1, &dims, NULL);
+   /* Create a dataset attribute. */
+   attribute_id = H5Acreate (H5groupEventid, attName.c_str(), H5T_STD_I32BE, dataspace_id, H5P_DEFAULT, H5P_DEFAULT);
+
+   /* Write the attribute data. */
+   status = H5Awrite(attribute_id, H5T_NATIVE_INT, &attValue);
+
+   /* Close the attribute. */
+   status = H5Aclose(attribute_id);
+   /* Close the dataspace. */
+   status = H5Sclose(dataspace_id);
+}
+
+void HydroinfoH5::addGroupattributeDouble(hid_t H5groupEventid, string attName, double attValue)
+{
+   herr_t status;
+   hsize_t dims;
+   hid_t attribute_id, dataspace_id;
+   
+   /* Create the data space for the attribute. */
+   dims = 1;
+   dataspace_id = H5Screate_simple(1, &dims, NULL);
+   /* Create a dataset attribute. */
+   attribute_id = H5Acreate (H5groupEventid, attName.c_str(), H5T_NATIVE_DOUBLE, dataspace_id, H5P_DEFAULT, H5P_DEFAULT);
+
+   /* Write the attribute data. */
+   status = H5Awrite(attribute_id, H5T_NATIVE_DOUBLE, &attValue);
+
+   /* Close the attribute. */
+   status = H5Aclose(attribute_id);
+   /* Close the dataspace. */
+   status = H5Sclose(dataspace_id);
+}
+
+void HydroinfoH5::readHydroinfoH5(string filename, int bufferSize_in, int Visflag_in)
+{
+   readinFlag = 1;
    // flag to determine whether to read evolutions for viscous variables
    Visflag = Visflag_in;
 
@@ -97,66 +257,6 @@ HydroinfoH5::HydroinfoH5(string filename, int bufferSize_in, int Visflag_in)
    status = H5Fclose(H5file_id);
 }
 
-HydroinfoH5::~HydroinfoH5()
-{
-   for(int i=0; i<Buffersize; i++)
-   {
-      for(int j=0; j<dimensionX; j++)
-      {
-         delete[] ed[i][j];
-         delete[] sd[i][j];
-         delete[] vx[i][j];
-         delete[] vy[i][j];
-         delete[] Temperature[i][j];
-         delete[] Pressure[i][j];
-         delete[] pi00[i][j];
-         delete[] pi01[i][j];
-         delete[] pi02[i][j];
-         delete[] pi03[i][j];
-         delete[] pi11[i][j];
-         delete[] pi12[i][j];
-         delete[] pi13[i][j];
-         delete[] pi22[i][j];
-         delete[] pi23[i][j];
-         delete[] pi33[i][j];
-         delete[] BulkPi[i][j];
-      }
-      delete[] ed[i];
-      delete[] sd[i];
-      delete[] vx[i];
-      delete[] vy[i];
-      delete[] Temperature[i];
-      delete[] Pressure[i];
-      delete[] pi00[i];
-      delete[] pi01[i];
-      delete[] pi02[i];
-      delete[] pi03[i];
-      delete[] pi11[i];
-      delete[] pi12[i];
-      delete[] pi13[i];
-      delete[] pi22[i];
-      delete[] pi23[i];
-      delete[] pi33[i];
-      delete[] BulkPi[i];
-   }
-   delete[] ed;
-   delete[] sd;
-   delete[] vx;
-   delete[] vy;
-   delete[] Temperature;
-   delete[] Pressure;
-   delete[] pi00;
-   delete[] pi01;
-   delete[] pi02;
-   delete[] pi03;
-   delete[] pi11;
-   delete[] pi12;
-   delete[] pi13;
-   delete[] pi22;
-   delete[] pi23;
-   delete[] pi33;
-   delete[] BulkPi;
-}
 
 void HydroinfoH5::readHydrogridInfo()
 {
