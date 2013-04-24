@@ -54,10 +54,10 @@
 !      enddo
 
       Call readHydroFiles_initialEZ("JetData.h5")
-      Call readHydroinfoBuffered_ideal(0.63d0, 0.0d0, 0.0d0, 
+      Call readHydroinfoBuffered_ideal(1.4d0, 0.256d0, 0.134d0, 
      &  ee,pp,ss,TT,vxx,vyy);
-      write(*,*) ee
-      call getJetDeltaTauMax(0.0d0,0.0d0,1.0d0,0.0d0, 0.2, 0.05, deltau)
+      write(*,*) TT
+      call getJetDeltaTauMax(0.0d0,0.0d0,1.0d0,0.0d0, 0.0, 0.05, deltau)
       write(*,*) deltau
 !      call getJetavgLength_shell(0.12d0, 10.0d0, jet_avglength, 
 !     &   jet_avglength_in, jet_avglength_out)

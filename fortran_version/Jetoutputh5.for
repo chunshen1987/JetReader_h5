@@ -294,21 +294,34 @@
       INTEGER(HID_T) :: dataspace_id  ! Data space identifier
 
       INTEGER(HSIZE_T), DIMENSION(2) :: dims ! Datasets dimensions
+      INTEGER(HSIZE_T), DIMENSION(2) :: dims_Cstyle ! Datasets dimensions
       Double precision, Dimension(XL:XH, YL:YH, 1:1) :: Dataset
+      Double precision, Dimension(YL:YH, XL:XH, 1:1) :: Dataset_Cstyle
 
       Integer :: error
       Integer :: rank = 2
 
+      Integer :: i, j
+ 
+      ! convert shape of the matrix to C style for output
+      dims_Cstyle(1) = dims(2)
+      dims_Cstyle(2) = dims(1)
+      do i = XL, XH, 1
+         do j = YL, YH, 1
+            Dataset_Cstyle(j, i, 1) = Dataset(i, j, 1)
+         enddo
+      enddo
+
       ! Create the data space for the first dataset.
-      CALL h5screate_simple_f(rank, dims, dataspace_id, error)
+      CALL h5screate_simple_f(rank, dims_Cstyle, dataspace_id, error)
 
       ! Create the dataset in group "Frame_i" with default properties.
       CALL h5dcreate_f(group_id, DatasetName, H5T_NATIVE_DOUBLE, 
      &                 dataspace_id, dataset_id, error)
       ! Write the first dataset.
       CALL h5dwrite_f(dataset_id, H5T_NATIVE_DOUBLE, 
-     &   Dataset(XL+XShift:XH-XShift:LSX, YL+YShift:YH-YShift:LSY, 1:1),
-     &   dims, error)
+     &  Dataset_Cstyle(YL+Yshift:YH-YShift:LSY,XL+XShift:XH-XShift:LSX,
+     &                 1:1),dims, error)
 
       ! Close the dataspace for the dataset.
       CALL h5sclose_f(dataspace_id, error)
@@ -667,6 +680,7 @@
      &  pi23M, pi33M, BulkPiM
        
       Integer :: J
+      Integer :: xidx
 
       if(bufferSize .lt. hydroGrid_numOfframes) then
          write(*,*) "BufferSize is too small, increase it to at least", 
@@ -699,6 +713,11 @@
         endif
         ! write to the buffer:
         eM(:,:,J) = Ed(:,:,1)
+        if(J==1) then
+           do xidx = hydroGrid_XL, hydroGrid_XH, 1
+             print*, eM(xidx, :, 1)
+           enddo
+        endif
         PM(:,:,J) = P(:,:,1)
         sM(:,:,J) = Sd(:,:,1)
         TM(:,:,J) = Temp(:,:,1)
@@ -749,19 +768,32 @@
      &                       hydroGrid_numOfframes
       
       INTEGER(HSIZE_T), DIMENSION(2) :: data_dims
+      INTEGER(HSIZE_T), DIMENSION(2) :: data_dims_Cstyle
       Double precision, Dimension(hydroGrid_XL:hydroGrid_XH, 
      &  hydroGrid_YL:hydroGrid_YH, 1:1) :: dset_data
+      Double precision, Dimension(hydroGrid_YL:hydroGrid_YH, 
+     &  hydroGrid_XL:hydroGrid_XH, 1:1) :: dset_data_Cstyle
       Integer :: error
+      Integer :: i, j
       
+      ! read in data matrix assuming in C style 
+      ! need to perform transpose to convert it into fortran style
       data_dims(1) = hydroGrid_XH - hydroGrid_XL + 1
       data_dims(2) = hydroGrid_YH - hydroGrid_YL + 1
+      data_dims_Cstyle(1) = data_dims(2)
+      data_dims_Cstyle(2) = data_dims(1)
 
       ! Open an existing dataset.
       CALL h5dopen_f(group_id, datasetName, dset_id, error)
 
       ! Read the dataset.
-      CALL h5dread_f(dset_id, H5T_NATIVE_DOUBLE, dset_data, data_dims, 
-     &               error)
+      CALL h5dread_f(dset_id, H5T_NATIVE_DOUBLE, dset_data_Cstyle, 
+     &               data_dims_Cstyle, error)
+      do i = hydroGrid_XL, hydroGrid_XH, 1
+        do j = hydroGrid_YL, hydroGrid_YH, 1
+          dset_data(i, j, 1) = dset_data_Cstyle(j, i, 1)
+        enddo
+      enddo
      
       ! Close the dataset.
       CALL h5dclose_f(dset_id, error)
@@ -847,6 +879,8 @@
      &  Temp1(1,1+1),Temp1(1+1,1+1),
      &  Temp2(1,1),Temp2(1+1,1),
      &  Temp2(1,1+1),Temp2(1+1,1+1))
+      print*, Temp1(1,1), Temp1(2, 1), Temp1(1, 2), Temp1(2,2)
+      print*, Temp2(1,1), Temp2(2, 1), Temp2(1, 2), Temp2(2,2)
 
       Call cubeInterp(xInc,yInc,tauInc,vx,
      &  VxB1(1,1),VxB1(1+1,1),VxB1(1,1+1),VxB1(1+1,1+1),
