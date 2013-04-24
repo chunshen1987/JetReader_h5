@@ -582,10 +582,6 @@ void HydroinfoH5::getHydroinfo(double tau, double x, double y, fluidCell* fluidC
    yIdx = (int) floor(temp);
    yInc = temp - yIdx;
 
-   fluidCellptr->temperature = cubeInterpShell(xIdx, yIdx, frameIdx, xInc, yInc, tauInc, Temperature);
-   cout << fluidCellptr->temperature << endl;
-   exit(0);
-   
    fluidCellptr->ed = cubeInterpShell(xIdx, yIdx, frameIdx, xInc, yInc, tauInc, ed);
    fluidCellptr->sd = cubeInterpShell(xIdx, yIdx, frameIdx, xInc, yInc, tauInc, sd);
    fluidCellptr->vx = cubeInterpShell(xIdx, yIdx, frameIdx, xInc, yInc, tauInc, vx);
@@ -649,8 +645,10 @@ double HydroinfoH5::cubeInterp(double x, double y, double z, double A000, double
 // is the value at (x=0,y=1,z=0). Note that the coordinate (x,y,z) must be
 // constrained to the unit cube. Axyz is the return value.
 {
+   /* for debug
    cout << A000 << "  " << A100 << "  " << A010 << "  " << A110 << endl;
-   cout << A001 << "  " << A101 << "  " << A011 << "  " << A111 << endl;
+   cout << A001 << "  " << A101 << "  " << A011 << "  " << A111 << endl; */
+
    double Axyz = A000*(1-x)*(1-y)*(1-z) + A100*x*(1-y)*(1-z) 
                  + A010*(1-x)*y*(1-z) + A001*(1-x)*(1-y)*z 
                  + A101*x*(1-y)*z + A011*(1-x)*y*z + A110*x*y*(1-z) 
