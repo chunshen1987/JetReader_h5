@@ -488,7 +488,7 @@
       write(*,'(A, F5.3, A)') "Tau0 = ", hydroGrid_Tau0, " fm/c"
       write(*,'(A, F5.3, A)') "dTau = ", hydroGrid_dTau, " fm/c"
       write(*,'(A, I5)') "number of Frames = ", hydroGrid_numOfframes
-      write(*,'(A, F5.3, A)') "Tau_max = ", hydroGrid_Taumax, " fm/c"
+      write(*,'(A, F7.3, A)') "Tau_max = ", hydroGrid_Taumax, " fm/c"
       write(*,"(A, I5)")"Readin viscous information : ",InputViscousFlag
       write(*,'(A)')"--------------------------------------------------"
 
@@ -713,11 +713,6 @@
         endif
         ! write to the buffer:
         eM(:,:,J) = Ed(:,:,1)
-        if(J==1) then
-           do xidx = hydroGrid_XL, hydroGrid_XH, 1
-             print*, eM(xidx, :, 1)
-           enddo
-        endif
         PM(:,:,J) = P(:,:,1)
         sM(:,:,J) = Sd(:,:,1)
         TM(:,:,J) = Temp(:,:,1)

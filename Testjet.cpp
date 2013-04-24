@@ -77,7 +77,10 @@ double Testjet::getJetlengthMax(double x_o, double y_o, double phi, double cutT,
          tauMax = 0;
          break;
       }
-      hydroInfoptr->getHydroinfo(jetLength+grid_Tau0, x_o+jetLength*vx, y_o+jetLength*vy, fluidCellptr);
+      if(jetLength < grid_Tau0)
+          hydroInfoptr->getHydroinfo(grid_Tau0, x_o+jetLength*vx, y_o+jetLength*vy, fluidCellptr);
+      else
+          hydroInfoptr->getHydroinfo(jetLength, x_o+jetLength*vx, y_o+jetLength*vy, fluidCellptr);
       if(fluidCellptr->temperature >= cutT)
       {
          tauMax = jetLength;
