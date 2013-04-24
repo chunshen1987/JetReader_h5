@@ -879,8 +879,6 @@
      &  Temp1(1,1+1),Temp1(1+1,1+1),
      &  Temp2(1,1),Temp2(1+1,1),
      &  Temp2(1,1+1),Temp2(1+1,1+1))
-      print*, Temp1(1,1), Temp1(2, 1), Temp1(1, 2), Temp1(2,2)
-      print*, Temp2(1,1), Temp2(2, 1), Temp2(1, 2), Temp2(2,2)
 
       Call cubeInterp(xInc,yInc,tauInc,vx,
      &  VxB1(1,1),VxB1(1+1,1),VxB1(1,1+1),VxB1(1+1,1+1),
