@@ -54,6 +54,7 @@
 !      enddo
 
       Call readHydroFiles_initialEZ("JetData.h5")
+      Call outputPlaintxtHuichaoFormat()
       Call readHydroinfoBuffered_ideal(3.4d0, 2.5d0, -4.34d0, 
      &  ee,pp,ss,TT,vxx,vyy);
       write(*,*) TT

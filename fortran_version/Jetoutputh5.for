@@ -1002,6 +1002,73 @@
 !-----------------------------------------------------------------------
 
 !***********************************************************************
+      Subroutine outputPlaintxtHuichaoFormat()
+      Implicit None
+
+      Double Precision:: tau,x,y,e,p,s,T,vx,vy
+
+      Integer :: hydroGrid_XL, hydroGrid_XH, hydroGrid_YL, hydroGrid_YH
+      Double precision :: hydroGrid_X0, hydroGrid_Y0
+      Double precision :: hydroGrid_DX, hydroGrid_DY
+      Double precision :: hydroGrid_Tau0, hydroGrid_dTau
+      Double precision :: hydroGrid_Taumax
+      Integer :: hydroGrid_numOfframes
+      Common /hydroGridinfo/ hydroGrid_XL, hydroGrid_XH, 
+     &                       hydroGrid_X0, hydroGrid_DX, 
+     &                       hydroGrid_YL, hydroGrid_YH, 
+     &                       hydroGrid_Y0, hydroGrid_DY, 
+     &                       hydroGrid_Tau0, hydroGrid_dTau,
+     &                       hydroGrid_Taumax,
+     &                       hydroGrid_numOfframes
+      Integer :: Itau, Ix, Iy
+      double precision :: outputDtau, outputDx, outputDy
+      double precision :: outputXL, outputXH, outputYL, outputYH
+      double precision :: outputTau0, outputTauMax
+      integer :: outputNX, outputNY, outputNtau
+      double precision :: local_Tau, local_x, local_y
+
+      double precision :: hbarC
+
+      hbarC = 0.19733
+
+      outputDtau = 0.1d0
+      outputDx = 0.5d0
+      outputDy = 0.5d0
+      outputXL = -11.0d0
+      outputXH = 11.0d0
+      outputYL = -11.0d0
+      outputYH = 11.0d0
+      outputTau0 = hydroGrid_Tau0
+      outputTauMax = hydroGrid_Taumax
+
+
+      outputNX = floor((outputXH - outputXL)/outputDx) + 1
+      outputNY = floor((outputYH - outputYL)/outputDy) + 1
+      outputNtau = floor((outputTauMax - outputTau0)/outputDtau) + 1
+
+      open(20, FILE='hydroinfoPlaintxtHuichaoFormat.dat', 
+     &     FORM='FORMATTED', STATUS='REPLACE')
+      
+      do Itau = 1, outputNtau, 1
+        local_Tau = outputTau0 + (Itau - 1)*outputDtau
+        do Ix = 1, outputNX, 1
+          local_x = outputXL + (Ix - 1)*outputDx
+          do Iy = 1, outputNY, 1
+             local_y = outputYL + (Iy - 1)*outputDy
+             call readHydroinfoBuffered_ideal(local_Tau, local_x, 
+     &              local_y, e, p, s, T, vx, vy)
+             write(20, '(3F10.2, 4F20.10)') local_x, local_y, local_Tau,
+     &              e/hbarC, T/hbarC, vx, vy
+          enddo
+        enddo
+      enddo
+      close(20)
+
+      return
+      end
+!-----------------------------------------------------------------------
+
+!***********************************************************************
       Subroutine getJetDeltaTauMax(x0,y0,dirX,dirY,cutT,step,deltaTau)
 !     Return the max possible deltaTau that determines the length of the
 !     path of a jet positioned at (x0,y0) with direction (dirX,dirY). The
