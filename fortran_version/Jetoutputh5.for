@@ -6,7 +6,7 @@
       Use HDF5
       Implicit none
 
-      CHARACTER(LEN=10) :: H5hydroFilename = "JetData.h5" ! File name
+      CHARACTER(LEN=20) :: H5hydroFilename = "results/JetData.h5" ! File name
       CHARACTER(LEN=8) :: groupname = "/Event" ! Group name
       Common /dataFile/ H5hydroFilename, groupname
 
@@ -180,7 +180,7 @@
       Use HDF5
       Implicit none
 
-      CHARACTER(LEN=10) :: H5hydroFilename ! File name
+      CHARACTER(LEN=20) :: H5hydroFilename ! File name
       CHARACTER(LEN=8) :: groupname        ! Group name
       CHARACTER(LEN=10) :: frameName       ! Group frame name
       Character(Len=4) :: frame_id_string
