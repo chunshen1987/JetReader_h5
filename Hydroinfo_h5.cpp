@@ -128,7 +128,7 @@ void HydroinfoH5::writeGroupattribute(hid_t H5groupEventid)
     addGroupattributeInt(H5groupEventid, "YL", (grid_YL + YShift)/grid_LSY);
     addGroupattributeInt(H5groupEventid, "YH", (grid_YH - YShift)/grid_LSY);
     addGroupattributeDouble(H5groupEventid, "DX", grid_dx*grid_LSX);
-    addGroupattributeDouble(H5groupEventid, "DY", grid_dy*grid_LSX);
+    addGroupattributeDouble(H5groupEventid, "DY", grid_dy*grid_LSY);
     addGroupattributeDouble(H5groupEventid, "Tau0", grid_Tau0);
     addGroupattributeDouble(H5groupEventid, "dTau", grid_dTau*grid_LST);
     addGroupattributeInt(H5groupEventid, "OutputViscousFlag", Visflag);
