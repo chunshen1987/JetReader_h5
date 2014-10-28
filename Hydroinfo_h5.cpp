@@ -643,6 +643,42 @@ void HydroinfoH5::setZero_fluidCell(fluidCell* fluidCellptr)
    fluidCellptr->bulkPi = 0.0e0;
 }
 
+void HydroinfoH5::output_hydro_info_text_format()
+{
+   ofstream output("hydro_info.dat");
+   double dx = 0.5;
+   double dy = 0.5;
+   double dtau = 0.1;
+   int ntau = (int)((grid_Taumax - grid_Tau0)/dtau) + 1;
+   int nx = (int)((grid_Xmax - grid_X0)/dx) + 1;
+   int ny = (int)((grid_Ymax - grid_Y0)/dy) + 1;
+   fluidCell* fluidCellptr = new fluidCell;
+   for(int i = 0; i < ntau; i++)
+   {
+       double tau_local = grid_Tau0 + i*dtau;
+       for(int j = 0; j < nx; j++)
+       {
+           double x_local = grid_X0 + j*dx;
+           for(int k = 0; k < ny; k++)
+           {
+               double y_local = grid_Y0 + k*dy;
+
+               getHydroinfo(tau_local, x_local, y_local, fluidCellptr);
+               output << scientific << setw(18) << setprecision(8)
+                      << tau_local << "   " << x_local << "   " 
+                      << y_local << "   " 
+                      << fluidCellptr->temperature << "   "
+                      << fluidCellptr->ed << "   " 
+                      << fluidCellptr->vx << "   " 
+                      << fluidCellptr->vy << "   " 
+                      << endl;
+           }
+       }
+   }
+   delete fluidCellptr;
+   output.close();
+}
+
 double HydroinfoH5::cubeInterpShell(int idx_x, int idx_y, int idx_z, double x, double y, double z, double ***dataset)
 {
    double result = cubeInterp(x, y, z,
